@@ -1,0 +1,6 @@
+.env
+README
+.gitignore
+venv
+.idea
+__pycache__
