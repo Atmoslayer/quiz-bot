@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 
@@ -44,7 +45,7 @@ def get_vk_keyboard(buttons):
     return keyboard
 
 
-def start(vk_api, vk_session, logger, redis_client):
+def start(vk_api, vk_session, logger, redis_client, questions_path):
     longpoll = VkLongPoll(vk_session)
     logger.info('VK bot started')
     text = 'Здравствуйте! Я бот для проверки викторин'
@@ -53,12 +54,12 @@ def start(vk_api, vk_session, logger, redis_client):
         if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text == 'Начать':
             redis_client.set(f'State {event.user_id}', str(State.PROCESSED_START))
             reply(event, text, keyboard, vk_api)
-            message_handler(vk_api, vk_session, redis_client)
+            message_handler(vk_api, vk_session, redis_client, questions_path)
 
 
-def message_handler(vk_api, vk_session, redis_client):
+def message_handler(vk_api, vk_session, redis_client, questions_path):
     longpoll = VkLongPoll(vk_session)
-    quiz = get_quiz()
+    quiz = get_quiz(questions_path)
     for event in longpoll.listen():
         user_id = event.peer_id
         user_state = redis_client.get(f'State {user_id}')
@@ -127,6 +128,11 @@ def main(vk_api):
     port = os.getenv('PORT')
     db_password = os.getenv('DB_PASSWORD')
 
+    parser = argparse.ArgumentParser(description='Questions parser')
+    parser.add_argument('--questions_path', help='Enter path to save books', type=str)
+    arguments = parser.parse_args()
+    questions_path = arguments.questions_path
+
     vk_session = vk_api.VkApi(token=vk_token)
     vk_api = vk_session.get_api()
 
@@ -145,7 +151,7 @@ def main(vk_api):
 
     logger.addHandler(log_handler)
 
-    start(vk_api, vk_session, logger, redis_client)
+    start(vk_api, vk_session, logger, redis_client, questions_path)
 
 
 if __name__ == '__main__':

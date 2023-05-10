@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 from enum import Enum
@@ -49,9 +50,9 @@ def get_keyboard(buttons, one_time_keyboard=False):
     return reply_markup
 
 
-def get_quiz():
+def get_quiz(questions_path):
     quiz = {}
-    with open('questions/1vs1200.txt', 'r', encoding='KOI8-R') as file:
+    with open(f'{questions_path}', 'r', encoding='KOI8-R') as file:
         question = ''
         for line in file:
             line = line.replace('\n', '')
@@ -86,9 +87,9 @@ def start(update, context):
     return State.PROCESSED_START
 
 
-def handle_new_question_request(update, context, redis_client):
+def handle_new_question_request(update, context, redis_client, questions_path):
     user_id = update['message']['chat']['id']
-    quiz = get_quiz()
+    quiz = get_quiz(questions_path)
     reply_markup = ReplyKeyboardRemove()
     message = random.choice(list(quiz.keys()))
     redis_client.set(user_id, message)
@@ -96,11 +97,11 @@ def handle_new_question_request(update, context, redis_client):
     return State.ISSUED_QUESTION
 
 
-def handle_solution_attempt(update, context, redis_client):
+def handle_solution_attempt(update, context, redis_client, questions_path):
     user_id = update['message']['chat']['id']
     buttons = [new_question_button, my_score_button]
     question = redis_client.get(user_id)
-    quiz = get_quiz()
+    quiz = get_quiz(questions_path)
     answer = quiz[question]
     text = update.message.text
 
@@ -121,10 +122,10 @@ def handle_solution_attempt(update, context, redis_client):
     return State.ANSWER_CHECKED
 
 
-def handle_surrender(update, context, redis_client):
+def handle_surrender(update, context, redis_client, questions_path):
     user_id = update['message']['chat']['id']
     question = redis_client.get(user_id)
-    quiz = get_quiz()
+    quiz = get_quiz(questions_path)
     answer = quiz[question]
     message = f'Правильный ответ: {answer}'
     buttons = [new_question_button, my_score_button]
@@ -163,6 +164,11 @@ def main():
     db_password = os.getenv('DB_PASSWORD')
     bot = telegram.Bot(token=tg_bot_token)
 
+    parser = argparse.ArgumentParser(description='Questions parser')
+    parser.add_argument('--questions_path', help='Enter path to save books', type=str)
+    arguments = parser.parse_args()
+    questions_path = arguments.questions_path
+
     logger.setLevel(logging.INFO)
     log_handler = BotLogsHandler(bot, admin_chat_id)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -187,7 +193,7 @@ def main():
             State.PROCESSED_START: [
                 MessageHandler(
                     Filters.regex(''.join(new_question_button)),
-                    partial(handle_new_question_request, redis_client=redis_client),
+                    partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
                 ),
                 MessageHandler(
                     Filters.regex(''.join(my_score_button)),
@@ -197,7 +203,7 @@ def main():
             State.ISSUED_QUESTION: [
                 MessageHandler(
                     Filters.text,
-                    partial(handle_solution_attempt, redis_client=redis_client),
+                    partial(handle_solution_attempt, redis_client=redis_client, questions_path=questions_path),
                 )
             ],
             State.ANSWER_CHECKED: [
@@ -207,13 +213,13 @@ def main():
                 ),
                 MessageHandler(
                     Filters.regex(''.join(surrender_button)),
-                    partial(handle_surrender, redis_client=redis_client),
+                    partial(handle_surrender, redis_client=redis_client, questions_path=questions_path),
                 )
             ],
             State.ISSUED_SCORE: [
                 MessageHandler(
                     Filters.regex(''.join(new_question_button)),
-                    partial(handle_new_question_request, redis_client=redis_client),
+                    partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
                 ),
             ],
         },
