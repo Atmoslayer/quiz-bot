@@ -31,7 +31,7 @@ class BotLogsHandler(logging.Handler):
 class State(Enum):
     PROCESSED_START = 1
     ISSUED_QUESTION = 2
-    ANSWER_CHECKED = 3
+    ANSWER_ACCEPTED = 3
     ISSUED_SCORE = 4
     SURRENDER_HANDLED = 5
 
@@ -114,13 +114,14 @@ def handle_solution_attempt(update, context, redis_client, questions_path):
         redis_client.set(f'Score {user_id}', user_score)
         message = f'Правильно! {answer}Поздравляю! Для следующего вопроса нажмите «{"".join(new_question_button)}»'
         reply_markup = get_keyboard(buttons)
+        send_message(update, message, reply_markup)
+        return State.ANSWER_ACCEPTED
     else:
         message = f'Ответ не верен. Попробуете ещё раз?'
         buttons = [my_score_button, surrender_button]
         reply_markup = get_keyboard(buttons)
-
-    send_message(update, message, reply_markup)
-    return State.ANSWER_CHECKED
+        send_message(update, message, reply_markup)
+        return State.ISSUED_QUESTION
 
 
 def handle_surrender(update, context, redis_client, questions_path):
@@ -203,19 +204,27 @@ def main():
             ],
             State.ISSUED_QUESTION: [
                 MessageHandler(
-                    Filters.text,
-                    partial(handle_solution_attempt, redis_client=redis_client, questions_path=questions_path),
-                )
-            ],
-            State.ANSWER_CHECKED: [
-                MessageHandler(
                     Filters.regex(''.join(my_score_button)),
                     partial(handle_user_score, redis_client=redis_client),
                 ),
                 MessageHandler(
                     Filters.regex(''.join(surrender_button)),
                     partial(handle_surrender, redis_client=redis_client, questions_path=questions_path),
-                )
+                ),
+                MessageHandler(
+                    Filters.text,
+                    partial(handle_solution_attempt, redis_client=redis_client, questions_path=questions_path),
+                ),
+            ],
+            State.ANSWER_ACCEPTED: [
+                MessageHandler(
+                    Filters.regex(''.join(my_score_button)),
+                    partial(handle_user_score, redis_client=redis_client),
+                ),
+                MessageHandler(
+                    Filters.regex(''.join(new_question_button)),
+                    partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
+                ),
             ],
             State.ISSUED_SCORE: [
                 MessageHandler(
