@@ -91,8 +91,9 @@ def message_handler(vk_api, vk_session, redis_client, questions_path):
                 answer = quiz[question]
 
                 if event.text in answer:
-                    user_score = int(redis_client.get(f'Score {user_id}'))
-                    if not user_score:
+                    try:
+                        user_score = int(redis_client.get(f'Score {user_id}'))
+                    except TypeError:
                         user_score = 0
                     user_score += 1
                     redis_client.set(f'Score {user_id}', user_score)

@@ -106,8 +106,9 @@ def handle_solution_attempt(update, context, redis_client, questions_path):
     text = update.message.text
 
     if text in answer:
-        user_score = int(redis_client.get(f'Score {user_id}'))
-        if not user_score:
+        try:
+            user_score = int(redis_client.get(f'Score {user_id}'))
+        except TypeError:
             user_score = 0
         user_score += 1
         redis_client.set(f'Score {user_id}', user_score)
