@@ -64,7 +64,7 @@ def message_handler(vk_api, vk_session, redis_client, questions_path):
         user_id = event.peer_id
         user_state = redis_client.get(f'State {user_id}')
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            if event.text == 'Новый вопрос' and (user_state == str(State.PROCESSED_START) or user_state == str(State.ISSUED_SCORE)):
+            if event.text == new_question_button and (user_state == str(State.PROCESSED_START) or user_state == str(State.ISSUED_SCORE)):
                 keyboard = None
                 message = random.choice(list(quiz.keys()))
                 redis_client.set(user_id, message)
