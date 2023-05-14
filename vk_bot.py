@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkLongPoll, VkEventType
 
-from telegram_bot import get_quiz, State
+from telegram_bot import State
+from quiz_file_parser import get_quiz
 
 logger = logging.getLogger('bot_logger')
 
