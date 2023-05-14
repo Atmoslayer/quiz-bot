@@ -103,11 +103,10 @@ def message_handler(vk_api, event, redis_client, questions_path):
             answer = quiz[question]
 
             if event.text in answer:
-                try:
-                    user_score = int(redis_client.get(f'Score {user_id}'))
-                except TypeError:
+                user_score = redis_client.get(f'Score {user_id}')
+                if not user_score:
                     user_score = 0
-                user_score += 1
+                user_score = int(user_score) + 1
                 redis_client.set(f'Score {user_id}', user_score)
                 message = f'Правильно! {answer}Поздравляю! Для следующего вопроса нажмите «{NEW_QUESTION_BUTTON}»'
                 keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]).get_keyboard()
