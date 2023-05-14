@@ -106,11 +106,10 @@ def handle_solution_attempt(update, context, redis_client, questions_path):
     text = update.message.text
 
     if text in answer:
-        try:
-            user_score = int(redis_client.get(f'Score {user_id}'))
-        except TypeError:
+        user_score = redis_client.get(f'Score {user_id}')
+        if not user_score:
             user_score = 0
-        user_score += 1
+        user_score = int(user_score) + 1
         redis_client.set(f'Score {user_id}', user_score)
         message = f'Правильно! {answer}Поздравляю! Для следующего вопроса нажмите «{"".join(NEW_QUESTION_BUTTON)}»'
         reply_markup = get_keyboard(buttons)
