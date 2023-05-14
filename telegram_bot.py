@@ -72,18 +72,21 @@ def get_quiz(questions_path):
     return quiz
 
 
-def send_message(update, text, reply_markup):
-    update.message.reply_text(
-        text=text,
-        reply_markup=reply_markup,
-    )
+# def send_message(update, text, reply_markup):
+#     update.message.reply_text(
+#         text=text,
+#         reply_markup=reply_markup,
+#     )
 
 
 def start(update, context):
     buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     reply_markup = get_keyboard(buttons)
-    text = 'Здравствуйте! Я бот для проверки викторин'
-    send_message(update, text, reply_markup)
+    message = 'Здравствуйте! Я бот для проверки викторин'
+    update.message.reply_text(
+        text=message,
+        reply_markup=reply_markup,
+    )
     return State.PROCESSED_START
 
 
@@ -93,7 +96,10 @@ def handle_new_question_request(update, context, redis_client, questions_path):
     reply_markup = ReplyKeyboardRemove()
     message = random.choice(list(quiz.keys()))
     redis_client.set(user_id, message)
-    send_message(update, message, reply_markup)
+    update.message.reply_text(
+        text=message,
+        reply_markup=reply_markup,
+    )
     return State.ISSUED_QUESTION
 
 
@@ -113,13 +119,19 @@ def handle_solution_attempt(update, context, redis_client, questions_path):
         redis_client.set(f'Score {user_id}', user_score)
         message = f'Правильно! {answer}Поздравляю! Для следующего вопроса нажмите «{"".join(NEW_QUESTION_BUTTON)}»'
         reply_markup = get_keyboard(buttons)
-        send_message(update, message, reply_markup)
+        update.message.reply_text(
+            text=message,
+            reply_markup=reply_markup,
+        )
         return State.ANSWER_ACCEPTED
     else:
         message = f'Ответ не верен. Попробуете ещё раз?'
         buttons = [MY_SCORE_BUTTON, SURRENDER_BUTTON]
         reply_markup = get_keyboard(buttons)
-        send_message(update, message, reply_markup)
+        update.message.reply_text(
+            text=message,
+            reply_markup=reply_markup,
+        )
         return State.ISSUED_QUESTION
 
 
@@ -131,7 +143,10 @@ def handle_surrender(update, context, redis_client, questions_path):
     message = f'Правильный ответ: {answer}'
     buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     reply_markup = get_keyboard(buttons)
-    send_message(update, message, reply_markup)
+    update.message.reply_text(
+        text=message,
+        reply_markup=reply_markup,
+    )
     return State.PROCESSED_START
 
 
@@ -144,15 +159,21 @@ def handle_user_score(update, context, redis_client):
     else:
         message = 'Пока что правильных ответов нет'
     reply_markup = get_keyboard(buttons)
-    send_message(update, message, reply_markup)
+    update.message.reply_text(
+        text=message,
+        reply_markup=reply_markup,
+    )
     return State.ISSUED_SCORE
 
 
 def done(update, context):
-    text = 'Работа завершена'
+    message = 'Работа завершена'
     buttons = [NEW_QUESTION_BUTTON, ['']]
     reply_markup = get_keyboard(buttons)
-    send_message(update, text, reply_markup)
+    update.message.reply_text(
+        text=message,
+        reply_markup=reply_markup,
+    )
     return CommandHandler.END
 
 
