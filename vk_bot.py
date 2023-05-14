@@ -48,77 +48,75 @@ def get_vk_keyboard(buttons):
 def start(vk_api, vk_session, logger, redis_client, questions_path):
     longpoll = VkLongPoll(vk_session)
     logger.info('VK bot started')
-    text = 'Здравствуйте! Я бот для проверки викторин'
-    keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON, MY_SCORE_BUTTON])
+    message = 'Здравствуйте! Я бот для проверки викторин'
+    keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]).get_keyboard()
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text == 'Начать':
             redis_client.set(f'State {event.user_id}', str(State.PROCESSED_START))
-            reply(event, text, keyboard, vk_api)
-            message_handler(vk_api, vk_session, redis_client, questions_path)
+            vk_api.messages.send(
+                user_id=event.user_id,
+                message=message,
+                keyboard=keyboard,
+                random_id=random.randint(1, 1000)
+            )
+        elif event.type == VkEventType.MESSAGE_NEW and event.to_me:
+            message_handler(vk_api, event, redis_client, questions_path)
 
 
-def message_handler(vk_api, vk_session, redis_client, questions_path):
-    longpoll = VkLongPoll(vk_session)
+def message_handler(vk_api, event, redis_client, questions_path):
     quiz = get_quiz(questions_path)
-    for event in longpoll.listen():
-        user_id = event.peer_id
-        user_state = redis_client.get(f'State {user_id}')
-        if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            if event.text == NEW_QUESTION_BUTTON and (user_state == str(State.PROCESSED_START) or user_state == str(State.ISSUED_SCORE) or user_state == str(State.ISSUED_QUESTION)):
-                keyboard = None
-                message = random.choice(list(quiz.keys()))
-                redis_client.set(user_id, message)
+
+    user_id = event.peer_id
+    user_state = redis_client.get(f'State {user_id}')
+    if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+        if event.text == NEW_QUESTION_BUTTON and (user_state == str(State.PROCESSED_START) or user_state == str(State.ISSUED_SCORE) or user_state == str(State.ISSUED_QUESTION)):
+            keyboard = None
+            message = random.choice(list(quiz.keys()))
+            redis_client.set(user_id, message)
+            redis_client.set(f'State {user_id}', str(State.ISSUED_QUESTION))
+
+        elif event.text == SURRENDER_BUTTON and (user_state == str(State.ISSUED_QUESTION)):
+            question = redis_client.get(user_id)
+            answer = quiz[question]
+            message = f'Правильный ответ: {answer}'
+            keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]).get_keyboard()
+            redis_client.set(f'State {user_id}', str(State.PROCESSED_START))
+
+        elif event.text == MY_SCORE_BUTTON and (user_state == str(State.PROCESSED_START) or user_state == str(State.ISSUED_QUESTION) or user_state == str(State.ANSWER_ACCEPTED)):
+            user_score = redis_client.get(f'Score {user_id}')
+            if user_score:
+                message = f'Ваш текущий счёт: {user_score}'
+            else:
+                message = 'Пока что правильных ответов нет'
+            keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON]).get_keyboard()
+            redis_client.set(f'State {user_id}', str(State.ISSUED_SCORE))
+
+        elif event.text and user_state == str(State.ISSUED_QUESTION):
+            question = redis_client.get(user_id)
+            answer = quiz[question]
+
+            if event.text in answer:
+                try:
+                    user_score = int(redis_client.get(f'Score {user_id}'))
+                except TypeError:
+                    user_score = 0
+                user_score += 1
+                redis_client.set(f'Score {user_id}', user_score)
+                message = f'Правильно! {answer}Поздравляю! Для следующего вопроса нажмите «{NEW_QUESTION_BUTTON}»'
+                keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]).get_keyboard()
+                redis_client.set(f'State {user_id}', str(State.ANSWER_ACCEPTED))
+            else:
+                message = f'Ответ не верен. Попробуете ещё раз?'
+                keyboard = get_vk_keyboard(buttons=[MY_SCORE_BUTTON, SURRENDER_BUTTON]).get_keyboard()
                 redis_client.set(f'State {user_id}', str(State.ISSUED_QUESTION))
 
-            elif event.text == SURRENDER_BUTTON and (user_state == str(State.ISSUED_QUESTION)):
-                question = redis_client.get(user_id)
-                answer = quiz[question]
-                message = f'Правильный ответ: {answer}'
-                keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON, MY_SCORE_BUTTON])
-                redis_client.set(f'State {user_id}', str(State.PROCESSED_START))
-
-            elif event.text == MY_SCORE_BUTTON and (user_state == str(State.PROCESSED_START) or user_state == str(State.ISSUED_QUESTION) or user_state == str(State.ANSWER_ACCEPTED)):
-                user_score = redis_client.get(f'Score {user_id}')
-                if user_score:
-                    message = f'Ваш текущий счёт: {user_score}'
-                else:
-                    message = 'Пока что правильных ответов нет'
-                keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON])
-                redis_client.set(f'State {user_id}', str(State.ISSUED_SCORE))
-
-            elif event.text and user_state == str(State.ISSUED_QUESTION):
-                question = redis_client.get(user_id)
-                answer = quiz[question]
-
-                if event.text in answer:
-                    try:
-                        user_score = int(redis_client.get(f'Score {user_id}'))
-                    except TypeError:
-                        user_score = 0
-                    user_score += 1
-                    redis_client.set(f'Score {user_id}', user_score)
-                    message = f'Правильно! {answer}Поздравляю! Для следующего вопроса нажмите «{NEW_QUESTION_BUTTON}»'
-                    keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON, MY_SCORE_BUTTON])
-                    redis_client.set(f'State {user_id}', str(State.ANSWER_ACCEPTED))
-                else:
-                    message = f'Ответ не верен. Попробуете ещё раз?'
-                    keyboard = get_vk_keyboard(buttons=[MY_SCORE_BUTTON, SURRENDER_BUTTON])
-                    redis_client.set(f'State {user_id}', str(State.ISSUED_QUESTION))
-
-            if message:
-                reply(event, message, keyboard, vk_api)
-
-
-def reply(event, text, keyboard, vk_api):
-    if keyboard:
-        keyboard = keyboard.get_keyboard()
-
-    vk_api.messages.send(
-        user_id=event.user_id,
-        message=text,
-        keyboard=keyboard,
-        random_id=random.randint(1, 1000)
-    )
+        if message:
+            vk_api.messages.send(
+                user_id=event.user_id,
+                message=message,
+                keyboard=keyboard,
+                random_id=random.randint(1, 1000)
+            )
 
 
 def main(vk_api):
