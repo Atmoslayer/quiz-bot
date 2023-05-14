@@ -69,20 +69,27 @@ def message_handler(vk_api, event, redis_client, questions_path):
     user_id = event.peer_id
     user_state = redis_client.get(f'State {user_id}')
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-        if event.text == NEW_QUESTION_BUTTON and (user_state == str(State.PROCESSED_START) or user_state == str(State.ISSUED_SCORE) or user_state == str(State.ISSUED_QUESTION)):
+        if event.text == NEW_QUESTION_BUTTON \
+                and (user_state == str(State.PROCESSED_START)
+                     or user_state == str(State.ISSUED_SCORE)
+                     or user_state == str(State.ISSUED_QUESTION)):
             keyboard = None
             message = random.choice(list(quiz.keys()))
             redis_client.set(user_id, message)
             redis_client.set(f'State {user_id}', str(State.ISSUED_QUESTION))
 
-        elif event.text == SURRENDER_BUTTON and (user_state == str(State.ISSUED_QUESTION)):
+        elif event.text == SURRENDER_BUTTON \
+                and (user_state == str(State.ISSUED_QUESTION)):
             question = redis_client.get(user_id)
             answer = quiz[question]
             message = f'Правильный ответ: {answer}'
             keyboard = get_vk_keyboard(buttons=[NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]).get_keyboard()
             redis_client.set(f'State {user_id}', str(State.PROCESSED_START))
 
-        elif event.text == MY_SCORE_BUTTON and (user_state == str(State.PROCESSED_START) or user_state == str(State.ISSUED_QUESTION) or user_state == str(State.ANSWER_ACCEPTED)):
+        elif event.text == MY_SCORE_BUTTON \
+                and (user_state == str(State.PROCESSED_START)
+                     or user_state == str(State.ISSUED_QUESTION)
+                     or user_state == str(State.ANSWER_ACCEPTED)):
             user_score = redis_client.get(f'Score {user_id}')
             if user_score:
                 message = f'Ваш текущий счёт: {user_score}'
