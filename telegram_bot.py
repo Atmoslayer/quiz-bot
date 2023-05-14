@@ -66,6 +66,7 @@ def start(update, context):
 def handle_new_question_request(update, context, redis_client, questions_path):
     user_id = update['message']['chat']['id']
     quiz = get_quiz(questions_path)
+    context.user_data['quiz'] = quiz
     reply_markup = ReplyKeyboardRemove()
     message = random.choice(list(quiz.keys()))
     redis_client.set(user_id, message)
@@ -80,7 +81,7 @@ def handle_solution_attempt(update, context, redis_client, questions_path):
     user_id = update['message']['chat']['id']
     buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     question = redis_client.get(user_id)
-    quiz = get_quiz(questions_path)
+    quiz = context.user_data['quiz']
     answer = quiz[question]
     text = update.message.text
 
@@ -111,7 +112,7 @@ def handle_solution_attempt(update, context, redis_client, questions_path):
 def handle_surrender(update, context, redis_client, questions_path):
     user_id = update['message']['chat']['id']
     question = redis_client.get(user_id)
-    quiz = get_quiz(questions_path)
+    quiz = context.user_data['quiz']
     answer = quiz[question]
     message = f'Правильный ответ: {answer}'
     buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
