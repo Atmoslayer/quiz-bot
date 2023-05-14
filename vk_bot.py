@@ -111,7 +111,7 @@ def message_handler(vk_api, vk_session, redis_client, questions_path):
 
 def reply(event, text, keyboard, vk_api):
     if keyboard:
-      keyboard = keyboard.get_keyboard()
+        keyboard = keyboard.get_keyboard()
 
     vk_api.messages.send(
         user_id=event.user_id,
