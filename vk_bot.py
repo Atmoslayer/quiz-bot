@@ -7,7 +7,6 @@ import vk_api
 import random
 
 from dotenv import load_dotenv
-from vk_api import keyboard
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkLongPoll, VkEventType
 
