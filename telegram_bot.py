@@ -72,13 +72,6 @@ def get_quiz(questions_path):
     return quiz
 
 
-# def send_message(update, text, reply_markup):
-#     update.message.reply_text(
-#         text=text,
-#         reply_markup=reply_markup,
-#     )
-
-
 def start(update, context):
     buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     reply_markup = get_keyboard(buttons)
