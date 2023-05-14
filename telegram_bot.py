@@ -36,9 +36,9 @@ class State(Enum):
     SURRENDER_HANDLED = 5
 
 
-new_question_button = ['Новый вопрос']
-my_score_button = ['Мой счёт']
-surrender_button = ['Сдаться']
+NEW_QUESTION_BUTTON = ['Новый вопрос']
+MY_SCORE_BUTTON = ['Мой счёт']
+SURRENDER_BUTTON = ['Сдаться']
 
 
 def get_keyboard(buttons, one_time_keyboard=False):
@@ -80,7 +80,7 @@ def send_message(update, text, reply_markup):
 
 
 def start(update, context):
-    buttons = [new_question_button, my_score_button]
+    buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     reply_markup = get_keyboard(buttons)
     text = 'Здравствуйте! Я бот для проверки викторин'
     send_message(update, text, reply_markup)
@@ -99,7 +99,7 @@ def handle_new_question_request(update, context, redis_client, questions_path):
 
 def handle_solution_attempt(update, context, redis_client, questions_path):
     user_id = update['message']['chat']['id']
-    buttons = [new_question_button, my_score_button]
+    buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     question = redis_client.get(user_id)
     quiz = get_quiz(questions_path)
     answer = quiz[question]
@@ -112,13 +112,13 @@ def handle_solution_attempt(update, context, redis_client, questions_path):
             user_score = 0
         user_score += 1
         redis_client.set(f'Score {user_id}', user_score)
-        message = f'Правильно! {answer}Поздравляю! Для следующего вопроса нажмите «{"".join(new_question_button)}»'
+        message = f'Правильно! {answer}Поздравляю! Для следующего вопроса нажмите «{"".join(NEW_QUESTION_BUTTON)}»'
         reply_markup = get_keyboard(buttons)
         send_message(update, message, reply_markup)
         return State.ANSWER_ACCEPTED
     else:
         message = f'Ответ не верен. Попробуете ещё раз?'
-        buttons = [my_score_button, surrender_button]
+        buttons = [MY_SCORE_BUTTON, SURRENDER_BUTTON]
         reply_markup = get_keyboard(buttons)
         send_message(update, message, reply_markup)
         return State.ISSUED_QUESTION
@@ -130,7 +130,7 @@ def handle_surrender(update, context, redis_client, questions_path):
     quiz = get_quiz(questions_path)
     answer = quiz[question]
     message = f'Правильный ответ: {answer}'
-    buttons = [new_question_button, my_score_button]
+    buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     reply_markup = get_keyboard(buttons)
     send_message(update, message, reply_markup)
     return State.PROCESSED_START
@@ -139,7 +139,7 @@ def handle_surrender(update, context, redis_client, questions_path):
 def handle_user_score(update, context, redis_client):
     user_id = update['message']['chat']['id']
     user_score = redis_client.get(f'Score {user_id}')
-    buttons = [new_question_button, ['']]
+    buttons = [NEW_QUESTION_BUTTON, ['']]
     if user_score:
         message = f'Ваш текущий счёт: {user_score}'
     else:
@@ -151,7 +151,7 @@ def handle_user_score(update, context, redis_client):
 
 def done(update, context):
     text = 'Работа завершена'
-    buttons = [new_question_button, ['']]
+    buttons = [NEW_QUESTION_BUTTON, ['']]
     reply_markup = get_keyboard(buttons)
     send_message(update, text, reply_markup)
     return CommandHandler.END
@@ -194,21 +194,21 @@ def main():
         states={
             State.PROCESSED_START: [
                 MessageHandler(
-                    Filters.regex(''.join(new_question_button)),
+                    Filters.regex(''.join(NEW_QUESTION_BUTTON)),
                     partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
                 ),
                 MessageHandler(
-                    Filters.regex(''.join(my_score_button)),
+                    Filters.regex(''.join(MY_SCORE_BUTTON)),
                     partial(handle_user_score, redis_client=redis_client),
                 )
             ],
             State.ISSUED_QUESTION: [
                 MessageHandler(
-                    Filters.regex(''.join(my_score_button)),
+                    Filters.regex(''.join(MY_SCORE_BUTTON)),
                     partial(handle_user_score, redis_client=redis_client),
                 ),
                 MessageHandler(
-                    Filters.regex(''.join(surrender_button)),
+                    Filters.regex(''.join(SURRENDER_BUTTON)),
                     partial(handle_surrender, redis_client=redis_client, questions_path=questions_path),
                 ),
                 MessageHandler(
@@ -218,17 +218,17 @@ def main():
             ],
             State.ANSWER_ACCEPTED: [
                 MessageHandler(
-                    Filters.regex(''.join(my_score_button)),
+                    Filters.regex(''.join(MY_SCORE_BUTTON)),
                     partial(handle_user_score, redis_client=redis_client),
                 ),
                 MessageHandler(
-                    Filters.regex(''.join(new_question_button)),
+                    Filters.regex(''.join(NEW_QUESTION_BUTTON)),
                     partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
                 ),
             ],
             State.ISSUED_SCORE: [
                 MessageHandler(
-                    Filters.regex(''.join(new_question_button)),
+                    Filters.regex(''.join(NEW_QUESTION_BUTTON)),
                     partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
                 ),
             ],
