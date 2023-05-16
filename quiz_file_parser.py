@@ -1,6 +1,6 @@
 def get_quiz(questions_path):
     quiz = {}
-    with open(f'{questions_path}', 'r', encoding='KOI8-R') as file:
+    with open(questions_path, 'r', encoding='KOI8-R') as file:
         question = ''
         for line in file:
             line = line.replace('\n', '')
