@@ -45,7 +45,7 @@ def get_vk_keyboard(buttons):
     return keyboard
 
 
-def start(vk_api, vk_session, logger, redis_client, questions_path):
+def start(vk_api, vk_session, logger, redis_client, quiz):
     longpoll = VkLongPoll(vk_session)
     logger.info('VK bot started')
     message = 'Здравствуйте! Я бот для проверки викторин'
@@ -60,12 +60,10 @@ def start(vk_api, vk_session, logger, redis_client, questions_path):
                 random_id=random.randint(1, 1000)
             )
         elif event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            message_handler(vk_api, event, redis_client, questions_path)
+            message_handler(vk_api, event, redis_client, quiz)
 
 
-def message_handler(vk_api, event, redis_client, questions_path):
-    quiz = get_quiz(questions_path)
-
+def message_handler(vk_api, event, redis_client, quiz):
     user_id = event.peer_id
     user_state = redis_client.get(f'State {user_id}')
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
@@ -156,7 +154,9 @@ def main(vk_api):
 
     logger.addHandler(log_handler)
 
-    start(vk_api, vk_session, logger, redis_client, questions_path)
+    quiz = get_quiz(questions_path)
+
+    start(vk_api, vk_session, logger, redis_client, quiz)
 
 
 if __name__ == '__main__':
