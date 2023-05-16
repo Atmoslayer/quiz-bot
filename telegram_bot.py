@@ -52,7 +52,8 @@ def get_keyboard(buttons, one_time_keyboard=False):
     return reply_markup
 
 
-def start(update, context):
+def start(update, context, quiz):
+    context.user_data['quiz'] = quiz
     buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     reply_markup = get_keyboard(buttons)
     message = 'Здравствуйте! Я бот для проверки викторин'
@@ -63,10 +64,9 @@ def start(update, context):
     return State.PROCESSED_START
 
 
-def handle_new_question_request(update, context, redis_client, questions_path):
+def handle_new_question_request(update, context, redis_client):
     user_id = update['message']['chat']['id']
-    quiz = get_quiz(questions_path)
-    context.user_data['quiz'] = quiz
+    quiz = context.user_data['quiz']
     reply_markup = ReplyKeyboardRemove()
     message = random.choice(list(quiz.keys()))
     redis_client.set(user_id, message)
@@ -77,7 +77,7 @@ def handle_new_question_request(update, context, redis_client, questions_path):
     return State.ISSUED_QUESTION
 
 
-def handle_solution_attempt(update, context, redis_client, questions_path):
+def handle_solution_attempt(update, context, redis_client):
     user_id = update['message']['chat']['id']
     buttons = [NEW_QUESTION_BUTTON, MY_SCORE_BUTTON]
     question = redis_client.get(user_id)
@@ -109,7 +109,7 @@ def handle_solution_attempt(update, context, redis_client, questions_path):
         return State.ISSUED_QUESTION
 
 
-def handle_surrender(update, context, redis_client, questions_path):
+def handle_surrender(update, context, redis_client):
     user_id = update['message']['chat']['id']
     question = redis_client.get(user_id)
     quiz = context.user_data['quiz']
@@ -180,11 +180,13 @@ def main():
         decode_responses=True
     )
 
+    quiz = get_quiz(questions_path)
+
     updater = Updater(token=tg_bot_token, use_context=True)
     dispatcher = updater.dispatcher
 
     conversation_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('start', partial(start, quiz=quiz))],
         states={
             State.PROCESSED_START: [
                 MessageHandler(
