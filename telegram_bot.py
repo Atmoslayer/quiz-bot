@@ -191,7 +191,7 @@ def main():
             State.PROCESSED_START: [
                 MessageHandler(
                     Filters.regex(''.join(NEW_QUESTION_BUTTON)),
-                    partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
+                    partial(handle_new_question_request, redis_client=redis_client),
                 ),
                 MessageHandler(
                     Filters.regex(''.join(MY_SCORE_BUTTON)),
@@ -205,11 +205,11 @@ def main():
                 ),
                 MessageHandler(
                     Filters.regex(''.join(SURRENDER_BUTTON)),
-                    partial(handle_surrender, redis_client=redis_client, questions_path=questions_path),
+                    partial(handle_surrender, redis_client=redis_client),
                 ),
                 MessageHandler(
                     Filters.text,
-                    partial(handle_solution_attempt, redis_client=redis_client, questions_path=questions_path),
+                    partial(handle_solution_attempt, redis_client=redis_client),
                 ),
             ],
             State.ANSWER_ACCEPTED: [
@@ -219,13 +219,13 @@ def main():
                 ),
                 MessageHandler(
                     Filters.regex(''.join(NEW_QUESTION_BUTTON)),
-                    partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
+                    partial(handle_new_question_request, redis_client=redis_client),
                 ),
             ],
             State.ISSUED_SCORE: [
                 MessageHandler(
                     Filters.regex(''.join(NEW_QUESTION_BUTTON)),
-                    partial(handle_new_question_request, redis_client=redis_client, questions_path=questions_path),
+                    partial(handle_new_question_request, redis_client=redis_client),
                 ),
             ],
         },
